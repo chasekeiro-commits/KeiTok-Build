@@ -1,0 +1,347 @@
+# Changelog
+
+## [2.2.0] - Unreleased
+
+### Changed
+
+- **Message size is now a slider in percent** (25–300%, step 5%) instead of five presets. 100% is the former “Normal”; existing configs are migrated once (Tiny → 45%, Small → 75%, Large → 135%, Huge → 165%)
+- **Separate HUD widget size** — HUD cards have their own size slider (shown in HUD mode), world messages keep theirs (shown in world mode)
+- **Reset to defaults keeps channel names** — Twitch / YouTube / Kick channels and the TikTok username survive a reset; everything else (including which platforms are enabled) goes back to defaults
+- **Twitch connects by channel name only** — the stream-key option is gone. It never unlocked extra events, only resolved the same nick, so the field is just a channel name again. Old keys are dropped from the config on the next save
+- **TikTok session cookies** — optional `sessionid` and `tt-target-idc` are separate fields on the TikTok page (`sessionid` stays masked). A `?` next to `sessionid` opens a help screen with screenshots at their own aspect ratio. Logged-in webcast sees more comments than a guest; leave both empty to stay anonymous. An older combined cookie string is split once on load
+
+### Fixed
+
+- **TikTok missing comments** — emoji-only lines were thrown away as “binary proto”; the websocket stayed dead after a drop instead of reconnecting; chat is now also pulled from `/webcast/im/fetch/` (history + cursor) so WSS is not the only source
+- **26.3 / 26.2 editor cube** — the 1×1 preview cube no longer shares the panel texture (which hid the fill) and is drawn as a wireframe so the message frame stays visible through it
+- **Settings screen flash** — opening or switching settings screens no longer replays vanilla blur; the world is dimmed statically instead
+- **Message collision fix** - fix an error of killing the wrong message caused by wrong counting order
+- **Chat history opens immediately** — card layouts are prepared when a message arrives, and the history column no longer starts scrolled past its content (pinned messages were visible, history looked empty until the next refresh)
+- **History footer clicks** — Clear and Close no longer open the message tucked under them. Card clicks follow the visible list, the same area the scissor already draws
+
+### Added
+
+- **Chat history key** — `\` opens message history from the game (rebind it in Controls). Settings stay on `]`, connect / disconnect stays on `[`
+- **Twitch GIFs** — official GIPHY keyboard messages from the IRC `gifs` tag (`start-end|id|url`) are downloaded from the URL Twitch sends and drawn on their own line under the username, sized to the name+badges row, centered, with a small gap. Animated Twitch emotes now use the `default` CDN template instead of `static`
+- **Message width** — line width before wrapping (60–400 px, default 120) for world messages and the HUD widget. Chat history keeps its fixed width
+- **3D message frames** — world messages can use a raised picture-frame (rounded corners, beveled rim, back wall) instead of the flat 9-slice panel. Choose **2D** or **3D** in Settings → Messages or the visual editor (3D by default; HUD cards stay 2D). Textures can be replaced with a resource pack (`message_panel.png`, `message_panel_border.png`, `message_frame_back.png`)
+- **Visual message editor** — opened from the highlighted card at the top of the Appearance tab while in a world. A settings panel over the live game shows sample messages from every platform, rendered exactly as real ones, and updates instantly when size, width, colors, background, 3D/2D frame, borders or role badges change. Two views: **Message only** (one sample in front of the camera — drag to rotate, scroll to move the camera, right-click to reset; the sample sits inside a 1×1×1 wireframe cube, so its real size stays clear while zooming) and **Around the player** (third-person camera you can orbit; samples spawn at the real positions for the current placement and min/max distance). In HUD mode the preview appears in the chosen HUD corner. Real chat messages are hidden while the editor is open and come back afterwards; camera perspective and view direction are restored on close
+- **Live events** — subscriptions, gifts, raids and similar events from each platform’s public feed: Twitch IRC `USERNOTICE` / bits; YouTube Super Chat / Super Sticker / membership / gifted memberships; Kick Pusher subscription / gifted-sub / host / follow; TikTok gifts, follows and LIVE subs. Each type has its own on/off switch on the platform page (TikTok gifts/follows stay off by default; the rest stay on). Event cards use their own accent color and badge, and read as “Name subscribed” instead of a normal chat line. Twitch follows are not in IRC, so there is no Twitch follow toggle.
+
+## [2.1.1] - 2026-10-07
+
+Release after **2.1.0**. Adds Minecraft 26.3 and fixes TikTok connect errors reported by players.
+
+### Fixed
+
+- **TikTok `ttwid`** — union register на `ttwid.bytedance.com` отвечает без cookie (`parse params fail`). Запрос идёт на `www.tiktok.com/ttwid/union/register/`, иначе чат крутит «ttwid cookie missing»
+- **Смена ника TikTok или канала Kick** во время запроса комнаты больше не пишется в чат как ошибка подключения: поток просто останавливается
+
+### Added
+
+- **Minecraft 26.3** support (`tysc-2.1.1+26.3.jar`, Fabric API 0.161.0+, Fabric Loader 0.19.2+, Mod Menu 21, Java 25, Loom 1.17, Gradle 9.6)
+- **Minecraft 1.20.1** support (`tysc-2.1.1+1.20.1.jar`, Fabric API 0.92.12+, Mod Menu 7.2.2, Java 17) for modpacks
+
+### Changed
+
+- **26.3 input** — GLFW is gone (SDL). Default keybinds and Escape use `InputConstants`; left/right mouse buttons follow the new ids (`MOUSE_BUTTON_LEFT` / `MOUSE_BUTTON_RIGHT`)
+- **26.3 world rendering** — panel and shatter particles rotate via `PoseStack.rotateDegrees` (`mulPose(Quaternionf)` was removed)
+- **26.3 click swing** — `LivingEntity.swing` now takes `SwingAnimation`
+
+## [2.1.0] - 2026-08-29
+
+Release after **2.0.1**. Fixes player-reported YouTube/TikTok issues, reworks platform settings into
+per-platform pages and adds appearance customization. Ideas and the TikTok role-detection approach
+contributed by **Adi**.
+
+### Fixed
+
+- **YouTube EU cookie consent** — `HttpClient` now pre-seeds `CONSENT` and `SOCS` cookies so EU/EEA IPs get the real watch/live-chat payload instead of the consent interstitial ([#9](https://github.com/ijustseen/take-your-minestream/issues/9))
+- **YouTube live-chat emojis** — named stickers such as `face-purple-crying` and channel custom emojis were dropped (parser only read `run.text`). They are now parsed from `message.runs[].emoji` and drawn inline from YouTube CDN thumbnails
+- **Kick emotes** — `[emote:id:name]` tokens in chat were shown as raw text. They are now parsed and drawn inline from `files.kick.com`
+- **TikTok comments missing for some users** — parse chat text from newer protobuf fields, accept prefixed method names, keep the full TikTok cookie jar on the websocket, and skip malformed user payloads without dropping the comment ([#10](https://github.com/ijustseen/take-your-minestream/issues/10))
+
+### Added
+
+- **Independent role toggles per source** — “Show everyone” on by default (other roles then inactive). Turn it off to keep subscribers / VIP / mods / followers that the platform actually sends ([#11](https://github.com/ijustseen/take-your-minestream/issues/11))
+- **HUD widget position** — choose a screen corner and X/Y pixel inset ([#11](https://github.com/ijustseen/take-your-minestream/issues/11))
+- **Per-platform settings pages** (`PlatformConfigScreen`) — platform banner, back button, channel/username field, role filters and all platform toggles in one place
+- **Panel colors** — HEX fill tint and border color with a full HSV color picker (saturation square, hue slider, preview); Escape applies the color; default fill is black; border can follow the platform brand color
+- **Reset to defaults** — two-click confirm in Chat & filters restores factory settings (banwords / blocked names / regexps are kept)
+- **Role badges** — host / mod / VIP / subscriber pixel badges before the author name in 3D panels, HUD cards and history
+- **Per-platform mute and sound** — hide a platform's messages or its notification sound without disconnecting
+- **TikTok gifts and follows** as optional chat events (off by default); streak gifts are announced once, on streak end
+
+### Changed
+
+- **Enabling a source no longer starts the parser** — a source switch only adds it to the parsed list; connections open when the chat parser is started (Chat ON) and new sources join a running parser
+- **Main settings screen** — platforms are now banner cards, two per row (same look as the platform page header): icon, name, on/off switch and a gear button that opens the platform page
+- **Automoderation and username blocklist** — each is a single row now: on/off switch plus a gear button that opens the banwords / blocked usernames list
+- **Dependent settings** — HUD position and offsets appear only in HUD overlay mode; panel colors are greyed out without the message background, border color while the border follows the platform, notification volume without the sound, and freeze distance without freezing
+- **Settings tabs** — Appearance vs Placement instead of mixing HUD and 3D modes in one cycle. World/HUD is on Appearance; Around/In front, distances and 3D behavior stay on Placement (always available). Switching back from HUD restores the last 3D mode
+- **Message shatter particles** — most shards use the panel fill color; the rest use the panel border color (platform accent or the custom border), not the author nick color
+- **Emotes, stickers and color emoji no longer hitch the game** — download, AWT rasterization and GIF decode run on background loader threads; GPU upload is capped at a few textures per tick. Large stickers are downscaled to 128 px. The emoji font is warmed up at client init
+- **Messages wait for pictures** — a bubble is shown only after its emotes/stickers/emoji textures are ready (or after 8 s if a CDN never answers), so codes no longer flash as raw text
+- **26.2 missing panel border** — fill and border were submitted on the same plane; `COLLECT_SUBMITS` sometimes drew the fill on top. The border is now offset slightly toward the camera
+- **26.x keybind category name** — 1.21.9+ looks up `key.category.<modid>.<path>` instead of the old `key.categories.*` string; the missing translation was showing the raw key
+
+### Technical
+
+- `EmoteImageCodec` — off-thread decode / GIF frames / downscale; `TwitchEmoteTextureCache` queues uploads and tracks failed loads
+- Shared `TwitchEmoteTextureCache` for all MC versions; `EmoteTextureFactory` supplies the 1.21.8+ named texture constructor (older versions override it)
+- Message queue holds a texture deadline; spawn drains GPU uploads before polling ready messages
+
+## [2.0.1] - 2026-07-12
+
+Patch release after **2.0.0** (`550b7b5`). All items below ship only in **2.0.1** artifacts (`tysc-2.0.1+<mc>.jar`), not in 2.0.0.
+
+### Added
+
+- **Minecraft 26.2** support (`tysc-2.0.1+26.2.jar`, Fabric API 0.154.2+, Java 25)
+- **`LegacySectionText`** — parses legacy `§` color codes in 3D message text (Twitch and other platforms)
+- **Runtime dimension binding** for every active message (`Message.dimensionKey`): spawn, pin, restore from history
+- **`ScreenNavigationCompat`** and **`HudOverlayCompat`** — shared entry points for screen navigation and action-bar overlay across 1.21.x / 26.1 / 26.2
+- Stonecutter rules for **26.2** APIs: `mainCamera()`, `setScreenAndShow`, `gui.screen()`, HUD overlay path
+- **`MessageEmoteSorting`** and **`MessageRenderSmoothing`** — extracted from `MessageRenderer` (shared by 1.21.x and 26.x)
+
+### Fixed
+
+- **Pinned / chat messages visible in other dimensions** (e.g. mod worlds such as Aether) — messages are tagged, filtered on render/HUD/click, cleared on dimension change, and pins are saved per dimension before reload ([#8](https://github.com/ijustseen/take-your-minestream/issues/8))
+- **3D message rotation** around the player on 26.2 — corrected Mojang axis mapping (`POSITIVE_Y` → `Axis.YP`, not `YN`)
+- **26.2 world rendering** — `COLLECT_SUBMITS` + `SubmitNodeCollector` submit pipeline instead of removed `bufferSource` draw path
+- **Invisible 3D text** on 26.2 — fixed `submitText` argument order (`light` / `color`)
+- **Nick / message colors** on 26.2 — `§` codes parsed via `LegacySectionText` instead of raw `Component.literal`
+- **26.1** render event — `LevelRenderEvents.AFTER_SOLID_FEATURES` instead of removed `AFTER_ENTITIES`
+- **Click handling** — filter messages by current dimension; 26.1 and 26.2 `MouseHandlerMixin` behaviour aligned
+- **Break particles** on 26.2 — float quad coordinates (no `Math.round`), matching 26.1
+- **Settings / history navigation** on 26.2 — screens opened via `setScreenAndShow` compat layer
+
+### Changed
+
+- On dimension change: save pins for the **previous** dimension, remove all messages from other dimensions, then load pins for the new one
+- `PinnedMessageStore.saveForDimension()` — persists only pins whose `dimensionKey` matches the target file
+- 26.1 and 26.2 client overrides aligned; only the render pipeline differs where the API requires it
+- UI screens, keybinding, chat status overlay, and HUD visibility use compat helpers instead of direct `setScreen` / `inGameHud` / `currentScreen` calls
+
+### Technical
+
+- `SubmitGeometryHelper`, submit-based `MessageRenderer`, `MessagePanelWorldRenderer`, and `MessageParticleManager` for 26.2
+- `RenderLayerCompat` stub for 26.2 submit pipeline; removed unused `panelConsumer` helper
+- Stonecutter: `Style` / `TextColor` mappings, `Formatting.byCode` → `ChatFormatting.getByCode`
+- Overrides in `versions/26.2/src/`; `settings.gradle.kts` adds **26.2** to the Stonecutter matrix
+
+## [2.0.0] - 2026-06-12
+
+### MAJOR UPDATE — multi-platform chat, UI overhaul & rebrand
+
+**Take Your MineStream** is now **Take Your Stream Chat** (`tysc`, mod id `take-your-stream-chat`). Settings and pins migrate automatically from 1.x (`take-your-minestream` folder / `tyms` jars).
+
+This release is a breaking change in scope: chat is no longer Twitch-only, settings and HUD were reworked, and several gameplay defaults changed.
+
+### Added
+
+- **Multi-platform live chat**: Twitch, **YouTube**, **Kick**, and **TikTok** — connect several sources at once from Settings → General
+- Unified chat stack: `ChatConnectionManager`, `ChatMessagePipeline`, `IncomingChatMessage`, per-platform clients
+- **Platform icons** on message cards (3D, HUD, history) with accent-colored panel borders
+- **Chat role filter** applies to **all platforms** (subscriber/member, VIP, mod, broadcaster) via shared badge parsing (`ChatAuthorRoles`)
+- **HUD overlay** rework: slide-in animation, smooth fade-out, chat-like stacking (newest at bottom), nick color from platform when available
+- HUD stays visible in **inventory and container screens**; hidden on ESC menu and other full screens
+- **MessagePanelLayout** — single source of truth for 3D panel size (render, click hit-test, look-to-freeze)
+- Localized UI and connection messages (en, ru, de, es, fr, zh — 162 keys each)
+- Settings tab **icons** (General, Messages, In World, Chat History)
+- `PlatformChannelRow`, `ConfigUiHelper`, `ChatConnectToggleHelper`; HTTP layer on `java.net.http.HttpClient` (Kick WAF compatibility)
+- **Chat connect toggle** in settings footer (between Chat History and Done): ON/OFF label, colored dot, **green/red button background** by connection state; same action as the hotkey
+- **Connection status overlay** (`ChatStatusNotifier`): connect/disconnect/connecting shown on the **action bar**, not in chat
+- **TikTok custom emotes** in chat messages (inline emotes + subscriber emote stickers), loaded from TikTok CDN URLs
+- **Spawn distance range** (min/max blocks) for Around and FOP modes in **In World** settings (default 2–5)
+- **Color Unicode emojis** — optional setting (Settings → Messages) renders system emoji glyphs instead of Minecraft font squares; works in 3D, HUD, and history
+
+### Changed
+
+- **Settings screen**: platform toggles per service, channel fields; save reconnects changed platforms; footer **History · Chat · Done**
+- **Chat notifications**: status on action bar; **errors only** in chat (offline / WAF / missing channel, etc.)
+- **Chat History** (formerly Message History): opens scrolled to the bottom; orange history icon
+- **In World** settings tab disabled when spawn mode is HUD
+- Platform cannot be enabled with an empty channel/username
+- **Message scale** presets reduced (~one step smaller): Tiny → 0.35, Normal → 0.75, Huge → 1.25 (Huge ≈ old Large)
+- **3D interaction distance** capped at **16 blocks** (click, pin, drag)
+- **Fall / fade duration** fixed at **0.5 s** — removed from settings (was user-configurable)
+- **Spawn queue**: max **10** pending messages; oldest dropped on overflow; live messages show **immediately** (no artificial spacing)
+- **YouTube poll batches**: when several messages arrive in one poll, they are sorted by `timestampUsec` and shown with real chat intervals (capped at 10 s gaps)
+- Notification sound plays when a message **appears**, not when it enters the queue
+- Role filter description updated for all platforms (all locales)
+- Mod metadata description lists all supported platforms
+
+- **Performance**: cached message panel/HUD layout and emote line wrapping (avoids per-frame recomputation); notification sound throttled to once per tick
+- **3D break particles**: spawn at the **end of the fall** (shatter moment), positions aligned with `MessagePanelLayout` / renderer transforms
+- **FOP spawn mode**: same random placement as **Around player** (radius, height), filtered to **horizontal FOV** with the player treated as looking at the horizon (yaw only, pitch ignored for the cone)
+
+### Fixed
+
+- **Click / hit detection** on large 3D messages with emotes and platform icon (was using wrong emote check and mismatched layout vs renderer)
+- Fall animation offset synced between renderer and click/freeze detection
+- **Kick** chat blocked by WAF (`ChatHttp` rewrite)
+- **TikTok**: live room API (`sourceType=54`); protobuf **wire type 4** (END_GROUP) and unknown fields skipped without killing WSS; parse errors logged at debug, not as connection failures
+- **YouTube**: offline channels no longer reported as “live chat unavailable for video ID” — detects non-live stream and shows **no live stream** for `@handle`; live detection handles spaced JSON, improved video ID selection and watch-page fallback
+- **Platform toggles** — disabling chat or closing settings with platforms OFF no longer reconnects them on save/ESC
+- **Color emoji setting** persisted correctly in config (`enableColorEmojis`); emoji textures load synchronously, no MC-font fallback for emoji provider
+- **Russian** lang file JSON syntax (trailing comma) and key binding label
+- **Mixin** client config package fixed after rebrand (`takeyourminestream.ijustseen.mixin.client`)
+- **Spawn chance** slider: 0% no longer spawns ~1% of messages (`>= chance` fix)
+- **NORMAL** message scale was incorrectly 0.8 instead of intended baseline
+- YouTube initial chat backlog still skipped; live poll batches spread by message timestamps when multiple arrive at once
+
+### Removed
+
+- Twitch-only IRC toggle helper (`TwitchToggleHelper`)
+- **Message fall (seconds)** setting — fixed internal timing
+- HUD left-click to dismiss (not viable with in-game cursor)
+- Queue clear on full disconnect (short capped queue makes tail acceptable)
+
+### Technical
+
+- `MessageHudOverlay`, `MessageHudVisibility`; Minecraft **26.1** HUD via `HudElementRegistry`
+- Version-specific `MessageHudRenderer` / `MouseHandlerMixin` where matrix and mouse APIs differ
+- Stonecutter replacements extended (GUI scaled size, `HandledScreen` → `AbstractContainerScreen` on 26.1)
+- Primary client command: `/streamchat` (`/minestream` kept as alias)
+- Lang namespace: `takeyourstreamchat.*`
+- `ChatStatusNotifier`, `ChatErrorReporter` (overlay vs chat routing); `client.inGameHud` → `client.gui` on 26.1
+
+## [1.4.3] - 2026-06-02
+
+### Changed
+
+- All console log messages are now in English
+- Removed verbose debug logging (IRC chat echo, emote load/register traces, 7TV success counters, settings-screen info)
+
+### Fixed
+
+- Crash when rendering 3D message panels on Minecraft 1.21.11 with Iris/Sodium (and related modded renderers): `RenderLayerCompat` now calls `RenderLayers` / `RenderTypes` directly instead of reflection (also fixes the incomplete 1.4.2 fix that could still throw `Unable to resolve entity RenderLayer`)
+- `CameraPositionCompat` uses direct camera position API per Minecraft version instead of reflection
+- History action popup: card text no longer draws on top of the menu — on Minecraft 1.21–1.21.4 popup fills use `RenderLayer.getGuiOverlay()`; on 1.21.8+ a new GUI root layer is created before the popup
+
+## [1.4.2] - 2026-06-02
+
+### Added
+
+- **Unpin mode** setting (Settings → Behavior): choose how to unpin 3D messages with right-click
+  - **Pin icon only** — unpin only when clicking the pin icon; click elsewhere on the message to drag
+  - **Whole message** — quick right-click anywhere on the message unpins it; holding right-click drags
+
+### Fixed
+
+- Crash when rendering 3D message panels on Minecraft 1.21.11 (NPE in `VertexConsumerProvider.getBuffer` when `RenderLayerCompat` returned null)
+- Broken 9-slice panels in history/pinned columns on Minecraft 1.21 / 1.21.1 (legacy `drawTexture` ignored texture region size)
+- Emotes not rendered in message history and pinned columns (only plain text was drawn)
+- Unpin mode «Whole message»: a quick right-click on an unpinned message no longer pins and immediately unpins it
+
+## [1.4.1] - 2026-06-02
+
+### Added
+
+- **Message history screen** with context menu: pin/unpin, block user, replay message
+- **Blocked username list** and block action from history
+- **Chat role filter** (Twitch badges: broadcaster, mod, VIP, etc.) in config
+- **Two-column history UI**: full history (left) + all pinned messages in the world (right), centered layout
+- **Message history actions** (`MessageHistoryActions`): pin copies with `historySourceId`, replay, block
+- Reusable GUI layer: `MessageCardLayout`, `MessageCardRenderer`, `MessagePanelGuiRenderer`, `GuiScrollbar`, `HistoryMessageActionPopup`, `ScreenUiHelper`, `ModUiTheme`
+- **9-slice panels** for world and HUD message rendering (`MessagePanel9Slice`, `MessagePanelWorldRenderer`)
+- **HUD emote rendering** (`MessageEmoteGuiRenderer`); pinned messages hidden from HUD overlay
+- Configurable **message history size** (10–500)
+- **Chance-to-spawn** slider and numeric fields for lifetime, fall duration, max freeze distance
+- Multi-version build with [Stonecutter](https://stonecutter.kikugie.dev/): **1.21**, **1.21.1**, **1.21.4**, **1.21.8**, **1.21.10**, **1.21.11**, **26.1** (covers **26.1.1** and **26.1.2** via one JAR)
+- Gradle tasks `buildAndCollect`, `buildActive`, `runActive`; [BUILD.md](BUILD.md) reference
+- Package refactor: `config/`, `core/`, `integration/twitch/`, `ui/screen/`, `ui/gui/`, `filtering/`
+
+### Changed
+
+- **Settings screen** redesigned: tabs, scrollable list, fixed footer with description and buttons; category labels
+- **Banword / regexp / blocked-username** list screens aligned with new UI theme
+- Message history: compact panels, independent scroll per column, live refresh on pin/unpin and history cap
+- HUD overlay: text wrap width aligned with 3D mode (120 px)
+- **Pinned message persistence** (`PinnedMessageStore`): improved world save/load and pin dimensions
+- **World join/leave** handling updates for pinned messages and IRC state
+- Build migrated from Groovy `build.gradle` to Kotlin `build.gradle.kts` + `settings.gradle.kts`
+- README and Modrinth README updated; translations (en, ru, de, es, fr, zh)
+
+### Fixed
+
+- Message history content clipped on the left (card X vs scissor padding mismatch)
+- Scrollbar track and thumb extending below/above the list panel
+- Message history not updating when history limit was reached (same size, different messages)
+- Button hover in custom-rendered screens
+- Pin icon and panel hitbox dimensions
+- `RenderLayerCompat` for Minecraft 1.21.11
+- Translucent rendering for removed/gone messages in history
+- Unpin from pinned column correctly removes history-linked pin copies
+
+### Technical
+
+- Version-specific client overrides in `versions/1.21.8/src/client/java/` (legacy `mouseClicked` / `keyPressed` APIs), reused for **1.21–1.21.4** with extra legacy GUI/HUD render paths
+- **Minecraft 26.1** port: Mojang mappings, `build-unobfuscated.gradle.kts`, Stonecutter replacements, overrides in `versions/26.1/src/` (`MouseHandlerMixin`, HUD, key bindings, sliders, `MessagePosition`, and related UI)
+- `PlayerMessageCompat` for chat feedback across 1.21.x and 26.1
+- Per-version dependencies in `versions/<mc>/gradle.properties`
+- `MessageLifecycleManager.getAllPinnedMessages()` — all active pinned messages, not only those still in history
+
+## [1.4.0] - 2026-03-13
+
+### MAJOR UPDATE
+
+- Emotes rendering added and stabilized:
+  - Twitch emotes from IRC tags
+  - 7TV emotes (global + channel)
+  - Animated 7TV GIF rendering with frame timing
+  - Local disk cache for Twitch and 7TV emotes
+- Config storage moved from `config/` to top-level `take-your-minestream/` folder
+  - Main JSON config moved inside this folder
+  - Legacy data migration added
+- Message interaction hitboxes fixed to match visual panel/pin geometry under rotations
+- Message interactions (remove/pin/unpin/drag) now work only with empty main hand
+- Auto IRC connect on world/server join added (config toggle)
+
+## [1.3.0] - 2026-03-07
+
+- Now you can pin messages
+- Massages behavior fixes with
+- Pinned messages can be copied from world in config folder
+- IRC fix
+
+## [1.2.0] - 2024-11-12
+
+### Added
+
+- Click-to-remove message functionality with particle effects
+- Configuration option to enable/disable click-to-remove feature
+- World event handling system for message parsing pause/resume
+- Automatic message parsing pause when leaving worlds
+- Automatic message parsing resume when joining worlds
+
+### Changed
+
+- Updated Minecraft version from 1.21.7 to 1.21.10
+- Updated Fabric API to 0.129.0+1.21.7
+- Fixed WorldRenderEvents imports (moved to v1.world package)
+- Updated rendering API calls (matrixStack() → matrices())
+- Fixed MinecraftClient.disconnect() mixin signature for new boolean parameter
+
+### Technical
+
+- MouseHandlerMixin for click detection on messages
+- MessageClickHandler for click processing and particle spawning
+- WorldEventHandler for managing message parsing state
+- ClientPlayNetworkHandlerMixin for world join detection
+- MinecraftClientMixin for world leave detection
+
+## [1.1.0] - 2024-11-11
+
+### Added
+
+- Custom render pipeline system (CustomRenderPipeline.java, WaypointRenderer.java)
+- GPU resource cleanup (GameRendererMixin.java)
+- Rendering guide (RENDERING_GUIDE.md)
+
+### Technical
+
+- Support for extraction/drawing phase rendering
+- Example waypoint renderer with through-wall rendering
+- Proper GPU memory management
